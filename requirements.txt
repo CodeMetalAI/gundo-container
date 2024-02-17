@@ -3,3 +3,4 @@ msgpack-rpc-python
 numpy
 airsim
 controller
+inputs
