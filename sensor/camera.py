@@ -2,8 +2,12 @@ import unittest
 import airsim
 
 class RealCamera:
-    def __init__(self):
-        --
+    def __init__(self, client):
+        self.client = client
+    
+    def get_frame():
+        # Whatever drone API or external web cameras
+        return
 
 class SimCamera:
     def __init__(self, client):
