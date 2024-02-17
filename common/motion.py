@@ -14,6 +14,6 @@ def radius_to_motion_parameters(radius, velocity):
     yaw_rate = 2 * math.pi / time_per_revolution  # Convert to radians per second
 
     # Calculate Throttle (assuming constant altitude)
-    throttle = float(.63)  # Adjust as needed based on drone weight and altitude
+    throttle = float(.6)  # Adjust as needed based on drone weight and altitude
 
     return {"roll": roll, "pitch": pitch, "yaw_rate": yaw_rate, "throttle": throttle}

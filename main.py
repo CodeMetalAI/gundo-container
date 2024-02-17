@@ -5,6 +5,7 @@ import os, time
 from multiprocessing import Process
 from control.gamepad import XboxController
 from datetime import datetime
+from common.motion import radius_to_motion_parameters
 
 # connect to the AirSim simulator
 client = airsim.MultirotorClient()
@@ -16,26 +17,50 @@ client.armDisarm(True)
 client.takeoffAsync().join()
 # client.moveToPositionAsync(-10, 10, -10, 5).join()
 
-CAPTURE_MODE = True
+CAPTURE_MODE = False
+controller = XboxController() if CAPTURE_MODE else None
 
-controller = XboxController()
-yaw_rate = np.pi
+yaw_rate = 0.01
 max_roll = np.deg2rad(75)
 max_pitch = np.deg2rad(75)
 input_rate = 0.01
-
-def control_loop():
-    while True:
-        inputs = controller.read()
-        roll = inputs["rx"] * max_roll
-        pitch = inputs["ry"] * max_pitch
-        yaw = (inputs["yaw+"] - inputs["yaw-"]) * yaw_rate
-        throttle = float(np.clip(inputs["y"], 0, 1))
-
-        client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw, throttle=throttle, duration=input_rate)
-        time.sleep(input_rate)
-
 capture_rate = 0.2
+neutral_rate = 0.2
+
+Pgain = .01
+Igain = .01
+throttle = float(.63)
+yaw = 0
+roll = float(0)
+pitch = .1
+
+
+def controller_task(inputs):
+    yaw = (inputs["yaw+"] - inputs["yaw-"]) * yaw_rate
+    roll = inputs["rx"] * max_roll
+    pitch = inputs["ry"] * max_pitch
+    throttle = float(np.clip(inputs["y"], 0, 1))
+
+    client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw,
+                                               throttle=throttle, duration=input_rate)
+
+def target_task():
+    # control code to fly towards target
+    return
+
+
+def neutral_task():
+    # fly around in a circle
+    radius = 10.0
+    velocity = 2.0
+
+    parameters = radius_to_motion_parameters(radius, velocity)
+    client.moveByRollPitchYawrateThrottleAsync(roll=parameters["roll"],
+                                               pitch=parameters["pitch"],
+                                               yaw_rate=parameters["yaw_rate"],
+                                               throttle=parameters["throttle"],
+                                               duration=input_rate)
+
 
 def capture_loop():
     now = datetime.now()
@@ -64,6 +89,24 @@ def capture_loop():
 
 if __name__ == '__main__':
     p1 = Process(target=control_loop)
+    p1.start()
+
+    if CAPTURE_MODE:
+        capture_loop()
+
+
+def motion_loop():
+    while True:
+        if controller:
+            inputs = controller.read()
+            controller_task(inputs)
+        else:
+            neutral_task()
+        time.sleep(input_rate)
+
+
+if __name__ == '__main__':
+    p1 = Process(target=motion_loop)
     p1.start()
 
     if CAPTURE_MODE:
