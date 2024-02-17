@@ -87,13 +87,6 @@ def capture_loop():
 
         time.sleep(capture_rate)
 
-if __name__ == '__main__':
-    p1 = Process(target=control_loop)
-    p1.start()
-
-    if CAPTURE_MODE:
-        capture_loop()
-
 
 def motion_loop():
     while True:
