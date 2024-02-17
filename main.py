@@ -24,8 +24,6 @@ max_roll = np.deg2rad(75)
 max_pitch = np.deg2rad(75)
 input_rate = 0.01
 
-capture_rate = 0.2
-
 def control_loop():
     while True:
         inputs = controller.read()
@@ -37,19 +35,29 @@ def control_loop():
         client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw, throttle=throttle, duration=input_rate)
         time.sleep(input_rate)
 
+capture_rate = 0.2
+
 def capture_loop():
     now = datetime.now()
     ts = now.strftime("%Y_%m_%d_%H_%M_%S_%f")[:-3]
     os.mkdir(f"capture_data/{ts}")
+    os.mkdir(f"capture_data/{ts}/images")
+    os.mkdir(f"capture_data/{ts}/masks")
     i = 0
 
     while True:
         responses = client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)])
         response = responses[0]
-        img1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8) 
+        img1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
         img_rgb = img1d.reshape(response.height, response.width, 3)
-        img = Image.fromarray(img_rgb)
-        img.save(f"capture_data/{ts}/cap_{i}.png")
+        airsim.write_png(f"capture_data/{ts}/images/cap_{i}.png", img_rgb)
+
+        responses = client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Segmentation, False, False)])
+        response = responses[0]
+        img1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
+        img_rgb = img1d.reshape(response.height, response.width, 3)
+        airsim.write_png(f"capture_data/{ts}/masks/cap_{i}.png", img_rgb)
+
         i += 1
 
         time.sleep(capture_rate)
