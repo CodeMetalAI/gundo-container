@@ -1,7 +1,7 @@
 import airsim
 import numpy as np
-from PIL import Image
-import os, time
+import os
+import time
 from multiprocessing import Process
 from control.gamepad import XboxController
 from datetime import datetime
@@ -27,8 +27,6 @@ input_rate = 0.01
 capture_rate = 0.2
 neutral_rate = 0.2
 
-Pgain = .01
-Igain = .01
 throttle = float(.63)
 yaw = 0
 roll = float(0)
