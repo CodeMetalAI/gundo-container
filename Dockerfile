@@ -15,7 +15,7 @@ RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM"
 
 COPY requirements.txt requirements.txt
 RUN python3.8 -m pip install --upgrade pip
-RUN python3.8 -m pip install -r requirements.txt
+RUN cat requirements.txt | xargs -n 1 -L 1 python3 -m pip install
 COPY . .
 
 CMD ["python3.8", "main.py"]
