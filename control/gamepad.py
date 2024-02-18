@@ -40,10 +40,8 @@ class XboxController(object):
             "y" : self.LeftJoystickY,
             "rx" : self.RightJoystickX,
             "ry" : self.RightJoystickY,
-            # "-z" : self.LeftTrigger,
-            # "z" : self.RightTrigger,
-            "yaw-" : self.RightBumper,
-            "yaw+" : self.LeftBumper,
+            "yaw-" : self.RightTrigger,
+            "yaw+" : self.LeftTrigger,
         }
 
         for id, val in inputs.items():

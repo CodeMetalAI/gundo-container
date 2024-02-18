@@ -51,7 +51,7 @@ class Camera(CameraGeneric):
 
 class SimCamera(CameraGeneric):
     def get_frame(self):
-        if self.client.isConnected():
+        # if self.client.isConnected():
             return self.client.simGetImage("0", airsim.ImageType.Scene)
 
 

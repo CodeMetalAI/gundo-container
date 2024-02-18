@@ -1,9 +1,16 @@
-
-
-
 import airsim
 import numpy as np
 import os, time
+from yolov5.detection import get_model, detect
+import configargparse
+
+def config_parser():
+    parser = configargparse.ArgumentParser()
+    parser.add_argument("--detect", type=int, default=0,
+                        help='specify 1 for running detection')
+    return parser
+parser = config_parser()
+args = parser.parse_args()
 
 # delete the group that includes the boxes
 
@@ -27,12 +34,22 @@ yaw_rate = .01
 # z = 20
 yaw = 0 # yaw error integrated 
 
+if args.detect:
+    model = get_model()
+
 while True:
     responses = client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)])
 
     response = responses[0]
     img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8) 
     img_rgb = img1d.reshape(response.height, response.width, 3)
+    if args.detect:
+        boxes = detect(img_rgb, model)
+        for box in boxes:
+            bbox = box["box"]
+            conf = box["conf"]
+            label = box["label"].split(" ")[0]
+            print(label)
     target = np.array([86,120,190])
     target = target.reshape(1, 1, 3)
     distanc = img_rgb - target
