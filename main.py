@@ -19,6 +19,7 @@ client.armDisarm(True)
 client.takeoffAsync().join()
 # client.moveToPositionAsync(-10, 10, -10, 5).join()
 
+man_yaw_rate = np.pi
 yaw_rate = 0.01
 max_roll = np.deg2rad(75)
 max_pitch = np.deg2rad(75)
@@ -58,10 +59,12 @@ def get_detections(img, thresh=0.8):
 
 
 def controller_task(inputs):
-    yaw = (inputs["yaw+"] - inputs["yaw-"]) * yaw_rate
-    roll = inputs["rx"] * max_roll
-    pitch = inputs["ry"] * max_pitch
+    yaw_sum = inputs["yaw+"] - inputs["yaw-"]
+    yaw = float(np.sign(yaw_sum) * np.power(yaw_sum, 2) * man_yaw_rate)
+    roll = float(np.sign(inputs["rx"]) * np.power(inputs["rx"], 2) * max_roll)
+    pitch = float(np.sign(inputs["ry"]) * np.power(inputs["ry"], 2)) * max_pitch
     throttle = float(np.clip(inputs["y"], 0, 1))
+
 
     client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw,
                                                throttle=throttle, duration=input_rate)
@@ -182,7 +185,7 @@ def capture_loop():
         time.sleep(capture_rate)
 
 
-def motion_loop(captureMode=False, chaseOrange=False, chaseTargetFlag=True):
+def motion_loop(captureMode=True, chaseOrange=False, chaseTargetFlag=True):
     controller = XboxController() if captureMode else None
     target_locked = False
     while True:
