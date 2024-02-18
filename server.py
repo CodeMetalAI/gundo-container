@@ -4,7 +4,7 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-# known states of each client drone. True means still live.
+# known states of each client drone.
 client_states = {0: 'alive', 1: 'alive', 2: 'alive'}
 
 
