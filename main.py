@@ -19,6 +19,7 @@ client.armDisarm(True)
 client.takeoffAsync().join()
 # client.moveToPositionAsync(-10, 10, -10, 5).join()
 
+man_yaw_rate = np.pi
 yaw_rate = 0.01
 max_roll = np.deg2rad(75)
 max_pitch = np.deg2rad(75)
@@ -33,12 +34,14 @@ pitch = .1
 
 model = get_model()
 
+controller = XboxController()
+
 def get_image():
     """ query client for current observation """
     responses = client.simGetImages([
-    airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)]) # vehicle_name=vehicleName
+        airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)])  # vehicle_name=vehicleName
     response = responses[0]
-    img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8) 
+    img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
     img_rgb = img1d.reshape(response.height, response.width, 3)
     return img_rgb
 
@@ -57,17 +60,20 @@ def get_detections(img, thresh=0.8):
 
 
 def controller_task(inputs):
-    yaw = (inputs["yaw+"] - inputs["yaw-"]) * yaw_rate
-    roll = inputs["rx"] * max_roll
-    pitch = inputs["ry"] * max_pitch
+    yaw_sum = inputs["yaw+"] - inputs["yaw-"]
+    yaw = float(np.sign(yaw_sum) * np.power(yaw_sum, 2) * man_yaw_rate)
+    roll = float(np.sign(inputs["rx"]) * np.power(inputs["rx"], 2) * max_roll)
+    pitch = float(np.sign(inputs["ry"]) * np.power(inputs["ry"], 2)) * max_pitch
     throttle = float(np.clip(inputs["y"], 0, 1))
+
 
     client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw,
                                                throttle=throttle, duration=input_rate)
 
+
 def chaseOrange():
     img_rgb = get_image()
-    target = np.array([86,120,190]) # B,G,R 
+    target = np.array([86, 120, 190])  # B,G,R
     target = target.reshape(1, 1, 3)
     distanc = img_rgb - target
     distanc = distanc.astype(np.float32)
@@ -80,19 +86,21 @@ def chaseOrange():
 
     # elErr = targetPixel[0] - 72
     azErr = targetPixel[1] - 128
-    yaw_rate = float(-azErr*Pgain)
+    yaw_rate = float(-azErr * Pgain)
 
-    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5, duration=input_rate)#, vehicle_name=vehicleName
+    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5,
+                                        duration=input_rate)  # , vehicle_name=vehicleName
     print("chasing orange")
+
 
 def chaseTarget():
     """ chases target and returns true if we have positive detections, else false """
     img_rgb = get_image()
     bboxes = get_detections(img_rgb)
-    if not len(bboxes): 
+    if not len(bboxes):
         return False
-    #TODO: update target based on bboxes
-    target = np.array([86,120,190]) # B,G,R 
+    # TODO: update target based on bboxes
+    target = np.array([86, 120, 190])  # B,G,R
     target = target.reshape(1, 1, 3)
     distanc = img_rgb - target
     distanc = distanc.astype(np.float32)
@@ -105,12 +113,14 @@ def chaseTarget():
 
     # elErr = targetPixel[0] - 72
     azErr = targetPixel[1] - 128
-    yaw_rate = float(-azErr*Pgain)
+    yaw_rate = float(-azErr * Pgain)
 
-    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5, duration=input_rate)#, vehicle_name=vehicleName
+    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5,
+                                        duration=input_rate)  # , vehicle_name=vehicleName
     print("chasing target")
     return True
-    
+
+
 def neutral_task():
     """ fly in circles and return True if we identify a target """
     # fly around in a circle
@@ -125,7 +135,7 @@ def neutral_task():
                                                duration=input_rate)
     img_rgb = get_image()
     bboxes = get_detections(img_rgb)
-    return bool(len(bboxes)>0)
+    return bool(len(bboxes) > 0)
 
 
 def capture_loop():
@@ -134,9 +144,31 @@ def capture_loop():
     os.mkdir(f"capture_data/{ts}")
     os.mkdir(f"capture_data/{ts}/images")
     os.mkdir(f"capture_data/{ts}/masks")
+    os.mkdir(f"capture_data/{ts}/motion")
+
     i = 0
 
+    camera_info = client.simGetCameraInfo(str(0))
+
+    with open(f"capture_data/{ts}/motion/camera_info.txt", 'a') as the_file:
+        the_file.write(str(camera_info.fov) + "\n")
+        the_file.write(str(camera_info.proj_mat.matrix) + "\n")
+        the_file.write(str([[256 // 2, 0, 256 // 2],
+                            [0, 256 // 2, 256 // 2],
+                            [0, 0, 1]]))
+
     while True:
+        camera_info = client.simGetCameraInfo(str(0))
+        pos = str([camera_info.pose.position.x_val,
+                   camera_info.pose.position.y_val,
+                   camera_info.pose.position.z_val,
+                   camera_info.pose.orientation.x_val,
+                   camera_info.pose.orientation.y_val,
+                   camera_info.pose.orientation.z_val,
+                   camera_info.pose.orientation.w_val])
+        with open(f"capture_data/{ts}/motion/pos_{i}.txt", 'a') as the_file:
+            the_file.write(pos)
+
         responses = client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)])
         response = responses[0]
         img1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
@@ -154,8 +186,7 @@ def capture_loop():
         time.sleep(capture_rate)
 
 
-def motion_loop(captureMode=False, chaseOrange=False, chaseTargetFlag=True):
-    controller = XboxController() if captureMode else None
+def motion_loop(captureMode=True, chaseOrange=False, chaseTargetFlag=True):
     target_locked = False
     while True:
         print("Capture: {}, Chase Orange: {}, Chase Target: {}".format(captureMode, chaseOrange, chaseTargetFlag))
@@ -174,6 +205,7 @@ def motion_loop(captureMode=False, chaseOrange=False, chaseTargetFlag=True):
                 chaseTargetFlag = True
         time.sleep(input_rate)
 
+
 def config_parser():
     parser = configargparse.ArgumentParser()
     parser.add_argument("--chase_orange", type=int, default=0,
@@ -183,6 +215,7 @@ def config_parser():
     parser.add_argument("--capture", type=int, default=0,
                         help='specify 1 for running capture')
     return parser
+
 
 if __name__ == '__main__':
     parser = config_parser()
