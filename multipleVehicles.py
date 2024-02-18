@@ -1,3 +1,5 @@
+import math
+
 import airsim
 import numpy as np
 import os
@@ -122,7 +124,6 @@ def chaseTarget(vehicle_name):
 
     client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5,
                                         duration=input_rate, vehicle_name=vehicle_name)
-    print("chasing target")
     return True
 
 
@@ -179,6 +180,18 @@ def capture_loop():
 def motion_loop(captureMode=False):
     controller = XboxController() if captureMode else None
     while True:
+        state = client.getMultirotorState(vehicle_name=vehicleNames[0])
+        northA = state.kinematics_estimated.linear_acceleration.x_val
+        eastA = state.kinematics_estimated.linear_acceleration.y_val
+        downA = state.kinematics_estimated.linear_acceleration.z_val
+
+        # large acceleration estimate collision
+        acc = math.sqrt(northA * northA + eastA * eastA + downA * downA)
+        threshold = 3.0
+        if acc > 3.0:
+            vehicleStates[vehicleNames[1]] = 'neutral'
+            vehicleStates[vehicleNames[2]] = 'neutral'
+        # don't want to run logging loop too often
         for vehicle_name in vehicleNames:
             if vehicleStates[vehicle_name] == 'capture':
                 inputs = controller.read()
@@ -196,17 +209,6 @@ def motion_loop(captureMode=False):
             time.sleep(input_rate)
 
 
-def log_loop():
-    while True:
-        lidarData = client.getLidarData(lidar_name="Lidar", vehicle_name="SimpleFlight1")
-        if (len(lidarData.point_cloud) > 3):
-            points = np.array(lidarData.point_cloud, dtype=np.dtype('f4'))
-            points = np.reshape(points, (int(points.shape[0] / 3), 3))
-            print(points)
-        # don't want to run logging loop too often
-        time.sleep(4)
-
-
 def config_parser():
     parser = configargparse.ArgumentParser()
     parser.add_argument("--capture", type=int, default=0,
@@ -219,8 +221,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     p1 = Process(target=motion_loop, args=[bool(args.capture)])
     p1.start()
-    p2 = Process(target=log_loop)
-    p2.start()
 
     if bool(args.capture):
         capture_loop()
