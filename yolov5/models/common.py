@@ -670,7 +670,7 @@ class AutoShape(nn.Module):
     def __init__(self, model, verbose=True):
         super().__init__()
         if verbose:
-            LOGGER.info("Adding AutoShape... ")
+            LOGGER.info("1Adding AutoShape... ")
         copy_attr(self, model, include=("yaml", "nc", "hyp", "names", "stride", "abc"), exclude=())  # copy attributes
         self.dmb = isinstance(model, DetectMultiBackend)  # DetectMultiBackend() instance
         self.pt = not self.dmb or model.pt  # PyTorch model
@@ -778,6 +778,7 @@ class Detections:
         self.s = tuple(shape)  # inference BCHW shape
 
     def _run(self, pprint=False, show=False, save=False, crop=False, render=False, labels=True, save_dir=Path("")):
+        save = False
         s, crops = "", []
         for i, (im, pred) in enumerate(zip(self.ims, self.pred)):
             s += f"\nimage {i + 1}/{len(self.pred)}: {im.shape[0]}x{im.shape[1]} "  # string
@@ -838,7 +839,7 @@ class Detections:
         save_dir = increment_path(save_dir, exist_ok, mkdir=True)  # increment save_dir
         self._run(save=True, labels=labels, save_dir=save_dir)  # save results
 
-    def crop(self, save=True, save_dir="runs/detect/exp", exist_ok=False):
+    def crop(self, save=False, save_dir="runs/detect/exp", exist_ok=False):
         save_dir = increment_path(save_dir, exist_ok, mkdir=True) if save else None
         return self._run(crop=True, save=save, save_dir=save_dir)  # crop results
 
