@@ -26,7 +26,7 @@ input_rate = 0.01
 capture_rate = 0.2
 neutral_rate = 0.2
 
-throttle = float(.63)
+throttle = float(1.0)
 yaw = 0
 roll = float(0)
 pitch = .1
@@ -43,7 +43,7 @@ def get_image():
     return img_rgb
 
 
-def get_detections(img, thresh=0.8):
+def get_detections(img, thresh=0.25):
     """ detect objects with conf above threshold """
     bboxes = []
     boxes = detect(img, model)
@@ -51,6 +51,7 @@ def get_detections(img, thresh=0.8):
         bbox = box["box"]
         conf = box["conf"]
         label = box["label"].split(" ")[0]
+        print(conf, label, bbox)
         if conf > thresh:
             bboxes.append(bbox)
     return bboxes
@@ -62,8 +63,9 @@ def controller_task(inputs):
     pitch = inputs["ry"] * max_pitch
     throttle = float(np.clip(inputs["y"], 0, 1))
 
-    client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw,
-                                               throttle=throttle, duration=input_rate)
+    #client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw,
+    #                                           throttle=throttle, duration=input_rate)
+    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-300, duration=input_rate)
 
 def chaseOrange():
     img_rgb = get_image()
@@ -82,7 +84,7 @@ def chaseOrange():
     azErr = targetPixel[1] - 128
     yaw_rate = float(-azErr*Pgain)
 
-    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5, duration=input_rate)#, vehicle_name=vehicleName
+    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-300, duration=input_rate)#, vehicle_name=vehicleName
     print("chasing orange")
 
 def chaseTarget():
@@ -92,12 +94,18 @@ def chaseTarget():
     if not len(bboxes): 
         return False
     #TODO: update target based on bboxes
+    
+    bbox = [float(num) for num in bboxes[0]]
+    targetPixel = [bbox[0] + bbox[2]/2.0, bbox[1] + bbox[3]/2.0]
+
+    """
     target = np.array([86,120,190]) # B,G,R 
     target = target.reshape(1, 1, 3)
     distanc = img_rgb - target
     distanc = distanc.astype(np.float32)
     sum_across_3rd_dim = np.sum(distanc ** 2, axis=2)
     targetPixel = np.unravel_index(np.argmin(sum_across_3rd_dim), sum_across_3rd_dim.shape)
+    """
 
     Pgain = .01
     roll = float(0)
@@ -111,7 +119,7 @@ def chaseTarget():
     print("chasing target")
     return True
     
-def neutral_task():
+def neutral_task_circle():
     """ fly in circles and return True if we identify a target """
     # fly around in a circle
     radius = 10.0
@@ -123,6 +131,23 @@ def neutral_task():
                                                yaw_rate=parameters["yaw_rate"],
                                                throttle=parameters["throttle"],
                                                duration=input_rate)
+    img_rgb = get_image()
+    bboxes = get_detections(img_rgb)
+    return bool(len(bboxes)>0)
+
+
+def neutral_task_random():
+    """ flies in x or y randomly and return True if we identify a target """
+    state = client.getMultirotorState()
+    x_val = state.kinematics_estimated.position.x_val
+    y_val = state.kinematics_estimated.position.y_val
+    z_val = state.kinematics_estimated.position.z_val
+    x_or_y = np.random.randint(0,2)
+    if x_or_y:
+        client.moveToPositionAsync(x_val + np.random.randint(-20,21), y_val, z_val, throttle)
+    else:
+        client.moveToPositionAsync(x_val, y_val + np.random.randint(-20,21), z_val, throttle)
+    time.sleep(4)
     img_rgb = get_image()
     bboxes = get_detections(img_rgb)
     return bool(len(bboxes)>0)
@@ -154,7 +179,14 @@ def capture_loop():
         time.sleep(capture_rate)
 
 
-def motion_loop(captureMode=False, chaseOrange=False, chaseTargetFlag=True):
+def motion_loop(captureMode=False, chaseOrange=False, chaseTargetFlag=True, circle=True):
+    state = client.getMultirotorState()
+    x_val = state.kinematics_estimated.position.x_val
+    y_val = state.kinematics_estimated.position.y_val
+    z_val = state.kinematics_estimated.position.z_val
+    client.moveToPositionAsync(x_val+20, y_val+20, z_val-20, throttle)
+    time.sleep(4)
+
     controller = XboxController() if captureMode else None
     target_locked = False
     while True:
@@ -169,7 +201,11 @@ def motion_loop(captureMode=False, chaseOrange=False, chaseTargetFlag=True):
             if not target_locked:
                 chaseTargetFlag = False
         else:
-            target_locked = neutral_task()
+            if circle:
+                target_locked = neutral_task_circle()
+            else:
+                target_locked = neutral_task_random()
+
             if target_locked:
                 chaseTargetFlag = True
         time.sleep(input_rate)
@@ -182,6 +218,10 @@ def config_parser():
                         help='specify 1 for chasing target')
     parser.add_argument("--capture", type=int, default=0,
                         help='specify 1 for running capture')
+    parser.add_argument("--circle", type=int, default=1,
+                        help='specify 1 for using neutral task of circling')
+    parser.add_argument("--detection", type=int, default=1,
+                        help='specify 1 when using detection (set to zero if you dont have yolo dependencies)')
     return parser
 
 if __name__ == '__main__':
@@ -190,7 +230,8 @@ if __name__ == '__main__':
     p1 = Process(target=motion_loop, \
                  args=(bool(args.capture), \
                        bool(args.chase_orange), \
-                       bool(args.chase_target),) \
+                       bool(args.chase_target), \
+                       bool(args.circle),) \
                  )
     p1.start()
 
