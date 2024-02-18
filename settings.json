@@ -1,0 +1,78 @@
+{
+  "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/main/docs/settings.md",
+  "SettingsVersion": 1.2,
+  "Vehicles": {
+    "SimpleFlight1": {
+      "VehicleType": "SimpleFlight",
+      "X": -3, "Y": 2, "Z": 0,
+      "DefaultVehicleState": "Armed",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    },
+    "SimpleFlight2": {
+      "VehicleType": "SimpleFlight",
+      "X": 0, "Y": 2, "Z": 0,
+      "DefaultVehicleState": "Armed",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    },
+    "SimpleFlight3": {
+      "VehicleType": "SimpleFlight",
+      "X": -3, "Y": 5, "Z": 0,
+      "DefaultVehicleState": "Armed",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    },
+    "SimpleFlight4": {
+      "VehicleType": "SimpleFlight",
+      "X": 0, "Y": 5, "Z": 0,
+      "DefaultVehicleState": "Armed",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    },
+    "SimpleFlight5": {
+      "VehicleType": "SimpleFlight",
+      "X": 5, "Y": 0, "Z": 0,
+      "DefaultVehicleState": "Armed",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    },
+    "SimpleFlight6": {
+      "VehicleType": "SimpleFlight",
+      "X": 5, "Y": 0, "Z": 0,
+      "DefaultVehicleState": "Armed",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    }
+  }
+}

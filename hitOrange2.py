@@ -1,62 +1,118 @@
 
-
-
 import airsim
 import numpy as np
-import os, time
+import os, time, random
 
-# delete the group that includes the boxes
-
-# connect to the AirSim simulator
 client = airsim.MultirotorClient()
 client.confirmConnection()
-client.enableApiControl(True)
-client.armDisarm(True)
+vehicleNames = client.listVehicles()
+f = []
+for name in vehicleNames:
+    client.enableApiControl(True, name)
+    client.armDisarm(True, name)
+    f.append(client.takeoffAsync(vehicle_name=name))
+for fi in f:
+    fi.join
 
-client.takeoffAsync().join()
-# client.moveToPositionAsync(-10, 10, -10, 5).join()
 
 ts = float(.2)
 Pgain = .01
 Igain = .01
-throttle = float(.6)
+throttle = float(.8)
 roll = float(0)
 pitch = .1
 yaw_rate = .01
-
 # z = 20
 yaw = 0 # yaw error integrated 
 
+# responses = client.simGetImages([
+#     airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)], vehicle_name=vehicleNames[i]) 
+
+Nf = len(f)
 while True:
-    responses = client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)])
+    for i in range(Nf):
+        responses = client.simGetImages([
+        airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)], vehicle_name=vehicleNames[i]) 
+        response = responses[0]
+        img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8) 
+        img_rgb = img1d.reshape(response.height, response.width, 3)
+        target = np.array([86,120,190]) # B,G,R 
+        target = target.reshape(1, 1, 3)
+        distanc = img_rgb - target
+        distanc = distanc.astype(np.float32)
+        sum_across_3rd_dim = np.sum(distanc ** 2, axis=2)
+        index_of_smallest_sum = np.unravel_index(np.argmin(sum_across_3rd_dim), sum_across_3rd_dim.shape)
+        elErr = index_of_smallest_sum[0] - 72
+        azErr = index_of_smallest_sum[1] - 128
+        yaw_rate = float(-azErr*Pgain)
 
-    response = responses[0]
-    img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8) 
-    img_rgb = img1d.reshape(response.height, response.width, 3)
-    target = np.array([86,120,190])
-    target = target.reshape(1, 1, 3)
-    distanc = img_rgb - target
-    distanc = distanc.astype(np.float32)
-    sum_across_3rd_dim = np.sum(distanc ** 2, axis=2)
-    index_of_smallest_sum = np.unravel_index(np.argmin(sum_across_3rd_dim), sum_across_3rd_dim.shape)
-    elErr = index_of_smallest_sum[0] - 72
-    azErr = index_of_smallest_sum[1] - 128
+        client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, throttle=.6, duration=ts, vehicle_name=vehicleNames[i])
+        
+        yaw += yaw_rate*ts
 
+# import plotly.express as px
+# fig = px.imshow(img_rgb)
+# fig.show()
+
+
+
+
+
+# pitch = float(-elErr*gain)
+        
+# yaw_rate = yaw_rate + yaw*Igain
+
+
+# yaw_rate = 0
+
+
+# client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=z, duration=ts)
+# time.sleep(ts)
+
+
+# airsim.wait_key('Press any key to takeoff')
+# f1 = client.takeoffAsync(vehicle_name=name)
+# f2 = client.takeoffAsync(vehicle_name="Drone2")
+# f1.join()
+# f2.join()
+# while True:
     
-    # pitch = float(-elErr*gain)
-    yaw_rate = float(-azErr*Pgain)
-    
-    yaw_rate = yaw_rate + yaw*Igain
 
-    
-    # yaw_rate = 0
+# client.confirmConnection('SimpleFlight1')
+# numMAV = 2
+# for i in range(numMAV):
+#     # connect to the AirSim simulator
+#     client.confirmConnection()
+#     client[i].enableApiControl(True)
+#     client[i].armDisarm(True)
+#     client[i].takeoffAsync().join()
+#     time.sleep(1)
+#     # x = -2+4*random.random()
+#     # y = -2+4*random.random()
+#     # z = 2+2*random.random()
+#     # v = 5
+#     # client[i].moveToPositionAsync(x, y, z, v).join()
+# client[1] = airsim.MultirotorClient(port = 41452)
+# __init__(self, ip = "", port = 41451
 
-    client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, throttle=.6, duration=ts)
-    
-    yaw += yaw_rate*ts
+# # time.sleep(1)
+# client[0].moveToPositionAsync(0, 0, 3, 5).join()
+# client[1].moveToPositionAsync(0, 0, 2, 5).join()
 
-    # client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=z, duration=ts)
-    time.sleep(ts)
+
+
+
+
+# # connect to the AirSim simulator
+# client = airsim.MultirotorClient()
+# client.confirmConnection()
+# client.enableApiControl(True)
+# client.armDisarm(True)
+# client.takeoffAsync().join()
+
+
+
+
 
 # while True:
 #     client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z = 2, duration=ts)
@@ -144,3 +200,4 @@ while True:
 
 # import plotly.express as px
 # import matplotlib.pyplot as plt
+
