@@ -18,6 +18,7 @@ client.takeoffAsync().join()
 # client.moveToPositionAsync(-10, 10, -10, 5).join()
 
 CAPTURE_MODE = False
+chaseOrange = True
 controller = XboxController() if CAPTURE_MODE else None
 
 yaw_rate = 0.01
@@ -42,11 +43,31 @@ def controller_task(inputs):
     client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw,
                                                throttle=throttle, duration=input_rate)
 
-def target_task():
-    # control code to fly towards target
-    return
+def chaseOrange():
+    responses = client.simGetImages([
+    airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)]) # vehicle_name=vehicleName
+    response = responses[0]
+    img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8) 
+    img_rgb = img1d.reshape(response.height, response.width, 3)
 
+    target = np.array([86,120,190]) # B,G,R 
+    target = target.reshape(1, 1, 3)
+    distanc = img_rgb - target
+    distanc = distanc.astype(np.float32)
+    sum_across_3rd_dim = np.sum(distanc ** 2, axis=2)
+    targetPixel = np.unravel_index(np.argmin(sum_across_3rd_dim), sum_across_3rd_dim.shape)
 
+    Pgain = .01
+    roll = float(0)
+    pitch = .4
+
+    # elErr = targetPixel[0] - 72
+    azErr = targetPixel[1] - 128
+    yaw_rate = float(-azErr*Pgain)
+
+    client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5, duration=input_rate)#, vehicle_name=vehicleName
+    print("chasing orange")
+    
 def neutral_task():
     # fly around in a circle
     radius = 10.0
@@ -91,6 +112,8 @@ def motion_loop():
         if controller:
             inputs = controller.read()
             controller_task(inputs)
+        elif chaseOrange:
+            chaseOrange()
         else:
             neutral_task()
         time.sleep(input_rate)

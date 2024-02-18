@@ -6,29 +6,20 @@ import os, time, random
 client = airsim.MultirotorClient()
 client.confirmConnection()
 vehicleNames = client.listVehicles()
-f = []
 for name in vehicleNames:
     client.enableApiControl(True, name)
     client.armDisarm(True, name)
-    f.append(client.takeoffAsync(vehicle_name=name))
-for fi in f:
-    fi.join
+    takeoff = client.takeoffAsync(vehicle_name=name)
+    takeoff.join
 
 
 ts = float(.2)
-Pgain = .01
-Igain = .01
+Pgain = .001
 throttle = float(.8)
 roll = float(0)
-pitch = .1
-yaw_rate = .01
-# z = 20
-yaw = 0 # yaw error integrated 
+pitch = .4
 
-# responses = client.simGetImages([
-#     airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)], vehicle_name=vehicleNames[i]) 
-
-Nf = len(f)
+Nf = len(vehicleNames)
 while True:
     for i in range(Nf):
         responses = client.simGetImages([
@@ -46,29 +37,47 @@ while True:
         azErr = index_of_smallest_sum[1] - 128
         yaw_rate = float(-azErr*Pgain)
 
-        client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, throttle=.6, duration=ts, vehicle_name=vehicleNames[i])
-        
-        yaw += yaw_rate*ts
+        client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=-5, duration=ts, vehicle_name=vehicleNames[i])
 
+        
+
+        # print("Vehicle position (x, y, z):", x, y, z)
+
+# time.ctime
+# time.
 # import plotly.express as px
 # fig = px.imshow(img_rgb)
 # fig.show()
-
-
-
-
-
-# pitch = float(-elErr*gain)
+        # client.moveByRollPitchYawrateThrottleAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, throttle=.6, duration=ts, vehicle_name=vehicleNames[i])
         
-# yaw_rate = yaw_rate + yaw*Igain
+        # state = client.getMultirotorState(vehicle_name=vehicleNames[i])
+        # north = state.kinematics_estimated.position.x_val
+        # east = state.kinematics_estimated.position.y_val
+        # down = state.kinematics_estimated.position.z_val
 
+        # if down > -3:
+        #     yaw_rate = 0
+        #     pitch = 0
+        # else:
+        #     pitch = .4
+
+# yaw_rate = .01
+
+# z = 20
+# Igain = .01
+# yaw = 0 # yaw error integrated 
+# yaw += yaw_rate*ts
+# responses = client.simGetImages([
+#     airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)], vehicle_name=vehicleNames[i]) 
+        
+# pitch = float(-elErr*gain)
+  
+# yaw_rate = yaw_rate + yaw*Igain
 
 # yaw_rate = 0
 
-
 # client.moveByRollPitchYawrateZAsync(roll=roll, pitch=pitch, yaw_rate=yaw_rate, z=z, duration=ts)
 # time.sleep(ts)
-
 
 # airsim.wait_key('Press any key to takeoff')
 # f1 = client.takeoffAsync(vehicle_name=name)
