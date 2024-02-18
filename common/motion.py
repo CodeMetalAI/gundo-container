@@ -1,5 +1,6 @@
 import math
 
+
 def radius_to_motion_parameters(radius, velocity):
     # take float meters radius and velocity to return floats roll, pitch, yawrate, throttle for
     # updating motion for circular neutral movement as a dictionary
