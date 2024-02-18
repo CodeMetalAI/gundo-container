@@ -34,6 +34,7 @@ pitch = .1
 
 model = get_model()
 
+controller = XboxController()
 
 def get_image():
     """ query client for current observation """
@@ -186,7 +187,6 @@ def capture_loop():
 
 
 def motion_loop(captureMode=True, chaseOrange=False, chaseTargetFlag=True):
-    controller = XboxController() if captureMode else None
     target_locked = False
     while True:
         print("Capture: {}, Chase Orange: {}, Chase Target: {}".format(captureMode, chaseOrange, chaseTargetFlag))
