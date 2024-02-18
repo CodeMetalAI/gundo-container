@@ -25,6 +25,7 @@ for name in vehicleNames:
     vehicleStates.update({name: "chase_orange"})
     vehicleCapture.update({name: False})
     takeoff = client.takeoffAsync(vehicle_name=name)
+    takeoff.join()
 
 yaw_rate = 0.01
 max_roll = np.deg2rad(75)
@@ -33,7 +34,7 @@ input_rate = 0.01
 capture_rate = 0.2
 neutral_rate = 0.2
 
-throttle = float(.63)
+throttle = float(.73)
 yaw = 0
 roll = float(0)
 pitch = .1
@@ -44,7 +45,7 @@ model = get_model()
 def get_image(vehicle_name):
     """ query client for current observation """
     responses = client.simGetImages([
-        airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)], vehicle_name=vehicle_name)  # vehicle_name=vehicleName
+        airsim.ImageRequest("1", airsim.ImageType.Scene, False, False)], vehicle_name=vehicle_name)
     response = responses[0]
     img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
     img_rgb = img1d.reshape(response.height, response.width, 3)
@@ -76,7 +77,7 @@ def controller_task(inputs, vehicle_name):
 
 
 def chaseOrange(vehicle_name):
-    img_rgb = get_image()
+    img_rgb = get_image(vehicle_name=vehicle_name)
     target = np.array([86, 120, 190])  # B,G,R
     target = target.reshape(1, 1, 3)
     distanc = img_rgb - target
@@ -99,7 +100,7 @@ def chaseOrange(vehicle_name):
 
 def chaseTarget(vehicle_name):
     """ chases target and returns true if we have positive detections, else false """
-    img_rgb = get_image()
+    img_rgb = get_image(vehicle_name=vehicle_name)
     bboxes = get_detections(img_rgb)
     if not len(bboxes):
         return False
@@ -138,7 +139,7 @@ def neutral_task(vehicle_name):
                                                throttle=parameters["throttle"],
                                                duration=input_rate,
                                                vehicle_name=vehicle_name)
-    img_rgb = get_image()
+    img_rgb = get_image(vehicle_name=vehicle_name)
     bboxes = get_detections(img_rgb)
     return bool(len(bboxes) > 0)
 
