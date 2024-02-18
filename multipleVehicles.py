@@ -198,9 +198,13 @@ def motion_loop(captureMode=False):
 
 def log_loop():
     while True:
-        print(client.getLidarData(lidar_name="Lidar", vehicle_name="SimpleFlight1"))
+        lidarData = client.getLidarData(lidar_name="Lidar", vehicle_name="SimpleFlight1")
+        if (len(lidarData.point_cloud) > 3):
+            points = np.array(lidarData.point_cloud, dtype=np.dtype('f4'))
+            points = np.reshape(points, (int(points.shape[0] / 3), 3))
+            print(points)
         # don't want to run logging loop too often
-        time.sleep(1)
+        time.sleep(4)
 
 
 def config_parser():
